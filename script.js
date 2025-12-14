@@ -13,6 +13,8 @@ const indicator = document.getElementById('page-indicator');
 const splash = document.getElementById('splash');
 const viewer = document.querySelector('.viewer');
 const askBtn = document.getElementById('askBtn');
+const gotoInput = document.getElementById('gotoPageInput');
+const gotoBtn = document.getElementById('gotoPageBtn');
 
 /* WhatsApp number (country code, no +) */
 const WHATSAPP_NUMBER = "919425311374";
@@ -23,11 +25,22 @@ let totalPages = 0;
 let pageNum = parseInt(localStorage.getItem('lastPage'), 10) || 1;
 let isRendering = false;
 
-/* Reopen-reset timeout (7 minutes) */
-const REOPEN_RESET_TIME = 7 * 60 * 1000; // 7 minutes in ms
+/* Inactivity reset (2 min) */
+const INACTIVITY_LIMIT = 2 * 60 * 1000;
+let inactivityTimer;
 
-/* Smooth fade transition */
-canvas.style.transition = "opacity 0.4s ease";
+/* Reset to first page */
+function resetToFirstPage() {
+  pageNum = 1;
+  localStorage.setItem('lastPage', 1);
+  renderPage(1);
+}
+
+/* Reset inactivity timer */
+function resetInactivityTimer() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(() => resetToFirstPage(), INACTIVITY_LIMIT);
+}
 
 /* Render page with fade effect */
 async function renderPage(num) {
@@ -39,19 +52,16 @@ async function renderPage(num) {
   const scale = 1.2;
   const viewport = page.getViewport({ scale });
 
-  const offscreenCanvas = document.createElement("canvas");
-  const offscreenCtx = offscreenCanvas.getContext("2d");
-  offscreenCanvas.width = viewport.width;
-  offscreenCanvas.height = viewport.height;
+  const offscreen = document.createElement("canvas");
+  const offCtx = offscreen.getContext("2d");
+  offscreen.width = viewport.width;
+  offscreen.height = viewport.height;
 
-  await page.render({
-    canvasContext: offscreenCtx,
-    viewport
-  }).promise;
+  await page.render({ canvasContext: offCtx, viewport }).promise;
 
-  canvas.width = offscreenCanvas.width;
-  canvas.height = offscreenCanvas.height;
-  ctx.drawImage(offscreenCanvas, 0, 0);
+  canvas.width = offscreen.width;
+  canvas.height = offscreen.height;
+  ctx.drawImage(offscreen, 0, 0);
 
   indicator.textContent = `${num} / ${totalPages}`;
   localStorage.setItem('lastPage', num);
@@ -60,23 +70,18 @@ async function renderPage(num) {
     canvas.style.opacity = "1";
     isRendering = false;
   }, 100);
+
+  resetInactivityTimer();
 }
 
 /* Load PDF */
 pdfjsLib.getDocument(url).promise.then(pdf => {
   pdfDoc = pdf;
   totalPages = pdf.numPages;
-
-  // Check if reopened after > 7 minutes
-  const lastActive = parseInt(localStorage.getItem('lastActive'), 10);
-  const now = Date.now();
-  if (lastActive && now - lastActive > REOPEN_RESET_TIME) {
-    pageNum = 1;
-    localStorage.setItem('lastPage', 1);
-  }
+  gotoInput.max = totalPages;
+  if (pageNum > totalPages) pageNum = 1;
 
   const alreadyShown = sessionStorage.getItem('splashShown');
-
   if (!alreadyShown) {
     splash.style.display = 'flex';
     viewer.classList.add('hidden');
@@ -86,7 +91,7 @@ pdfjsLib.getDocument(url).promise.then(pdf => {
       viewer.classList.remove('hidden');
       renderPage(pageNum);
       sessionStorage.setItem('splashShown', 'true');
-    }, 1800);
+    }, 2000); // 2 s splash
   } else {
     splash.style.display = 'none';
     viewer.classList.remove('hidden');
@@ -94,19 +99,13 @@ pdfjsLib.getDocument(url).promise.then(pdf => {
   }
 });
 
-/* Save last active timestamp whenever tab closes or reloads */
-window.addEventListener('beforeunload', () => {
-  localStorage.setItem('lastActive', Date.now().toString());
-});
-
-/* Navigation buttons */
+/* Navigation */
 prevBtn.onclick = () => {
   if (pageNum > 1) {
     pageNum--;
     renderPage(pageNum);
   }
 };
-
 nextBtn.onclick = () => {
   if (pageNum < totalPages) {
     pageNum++;
@@ -114,45 +113,54 @@ nextBtn.onclick = () => {
   }
 };
 
+/* Go-to-page */
+gotoBtn.onclick = () => {
+  const target = parseInt(gotoInput.value, 10);
+  if (!isNaN(target) && target >= 1 && target <= totalPages) {
+    pageNum = target;
+    renderPage(pageNum);
+  } else {
+    alert(`Enter a number between 1 and ${totalPages}`);
+  }
+};
+
 /* Keyboard navigation */
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft') prevBtn.click();
   if (e.key === 'ArrowRight') nextBtn.click();
+  resetInactivityTimer();
 });
 
-/* Swipe support (mobile) */
-let startX = 0;
-let endX = 0;
+/* Swipe (mobile) */
+let startX = 0, endX = 0;
 const swipeThreshold = 50;
-
 canvas.addEventListener('touchstart', e => {
   startX = e.touches[0].clientX;
+  resetInactivityTimer();
 });
-
 canvas.addEventListener('touchmove', e => {
   endX = e.touches[0].clientX;
 });
-
 canvas.addEventListener('touchend', () => {
   const diff = endX - startX;
   if (Math.abs(diff) > swipeThreshold) {
-    if (diff < 0 && pageNum < totalPages) {
-      pageNum++;
-      renderPage(pageNum);
-    } else if (diff > 0 && pageNum > 1) {
-      pageNum--;
-      renderPage(pageNum);
-    }
+    if (diff < 0 && pageNum < totalPages) { pageNum++; renderPage(pageNum); }
+    else if (diff > 0 && pageNum > 1) { pageNum--; renderPage(pageNum); }
   }
   startX = endX = 0;
 });
 
-/* WhatsApp Share */
+/* Reset timer on clicks / mouse moves */
+['click', 'mousemove', 'keydown', 'touchstart'].forEach(evt =>
+  document.addEventListener(evt, resetInactivityTimer)
+);
+
+/* WhatsApp share */
 askBtn.addEventListener('click', () => {
+  resetInactivityTimer();
   canvas.toBlob(async blob => {
     const file = new File([blob], `Page_${pageNum}.png`, { type: "image/png" });
 
-    // Try native share first (mobile)
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({
@@ -166,7 +174,6 @@ askBtn.addEventListener('click', () => {
       }
     }
 
-    // Fallback for desktop / WhatsApp Web
     const imgURL = URL.createObjectURL(blob);
     const text = encodeURIComponent(
       `Hi, I'm interested in this product (Page ${pageNum}). Screenshot attached.`
