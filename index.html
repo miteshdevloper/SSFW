@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,27 +8,24 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body>
-  <!-- Splash -->
-  <div id="splash" class="splash">
-    <h1>Loading Product...</h1>
-  </div>
-
-  <!-- Viewer -->
-  <div class="viewer hidden">
+  <div class="viewer">
     <canvas id="pdf-canvas"></canvas>
 
-    <div class="controls">
-      <button id="prev">Prev</button>
-      <span id="page-indicator"></span>
-      <button id="next">Next</button>
-    </div>
+    <!-- Overlay controls -->
+    <div class="overlay">
+      <div class="page-info">
+        <button id="prev" class="nav">◀</button>
+        <span id="page-indicator">1 / 1</span>
+        <button id="next" class="nav">▶</button>
+      </div>
 
-    <div class="page-controls">
-      <input type="number" id="gotoPageInput" placeholder="Page #" min="1" />
-      <button id="gotoPageBtn">Go</button>
-    </div>
+      <div class="goto-box">
+        <input type="number" id="gotoPageInput" placeholder="पेज #" min="1" />
+        <button id="gotoPageBtn">जाएँ</button>
+      </div>
 
-    <button id="askBtn" class="whatsapp-btn">Ask on WhatsApp</button>
+      <button id="askBtn" class="whatsapp-btn">व्हाट्सऐप पर पूछें</button>
+    </div>
   </div>
 
   <script src="script.js"></script>
