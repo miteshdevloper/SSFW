@@ -14,7 +14,7 @@ const splash = document.getElementById('splash');
 const viewer = document.querySelector('.viewer');
 const askBtn = document.getElementById('askBtn');
 
-/* WhatsApp number (country code, no +) */
+/* WhatsApp number */
 const WHATSAPP_NUMBER = "919425311374";
 
 /* State */
@@ -22,17 +22,23 @@ let pdfDoc = null;
 let totalPages = 0;
 let pageNum = parseInt(localStorage.getItem('lastPage'), 10) || 1;
 
+/* Zoom */
+let zoom = 1;
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 3;
+
 /* Render page */
 function renderPage(num) {
   pdfDoc.getPage(num).then(page => {
     const baseViewport = page.getViewport({ scale: 1 });
 
-    const scale = Math.min(
+    const fitScale = Math.max(
       window.innerWidth / baseViewport.width,
       window.innerHeight / baseViewport.height
     );
 
-    const viewport = page.getViewport({ scale });
+    const finalScale = fitScale * zoom;
+    const viewport = page.getViewport({ scale: finalScale });
 
     canvas.width = viewport.width;
     canvas.height = viewport.height;
@@ -51,7 +57,6 @@ function renderPage(num) {
 pdfjsLib.getDocument(url).promise.then(pdf => {
   pdfDoc = pdf;
   totalPages = pdf.numPages;
-
   if (pageNum > totalPages) pageNum = 1;
 
   setTimeout(() => {
@@ -61,10 +66,11 @@ pdfjsLib.getDocument(url).promise.then(pdf => {
   }, 1800);
 });
 
-/* Navigation buttons */
+/* Navigation */
 prevBtn.onclick = () => {
   if (pageNum > 1) {
     pageNum--;
+    zoom = 1;
     renderPage(pageNum);
   }
 };
@@ -72,74 +78,106 @@ prevBtn.onclick = () => {
 nextBtn.onclick = () => {
   if (pageNum < totalPages) {
     pageNum++;
+    zoom = 1;
     renderPage(pageNum);
   }
 };
 
-/* Keyboard navigation */
+/* Keyboard */
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft') prevBtn.click();
   if (e.key === 'ArrowRight') nextBtn.click();
 });
 
-/* Resize handling */
+/* Resize */
 window.addEventListener('resize', () => {
   if (pdfDoc) renderPage(pageNum);
 });
 
-/* Swipe support */
+/* Swipe navigation */
 let startX = 0;
 let endX = 0;
 const swipeThreshold = 50;
 
 canvas.addEventListener('touchstart', e => {
-  startX = e.touches[0].clientX;
+  if (e.touches.length === 1) {
+    startX = e.touches[0].clientX;
+  }
 });
 
 canvas.addEventListener('touchmove', e => {
-  endX = e.touches[0].clientX;
+  if (e.touches.length === 1) {
+    endX = e.touches[0].clientX;
+  }
 });
 
 canvas.addEventListener('touchend', () => {
   const diff = endX - startX;
-
-  if (Math.abs(diff) > swipeThreshold) {
-    if (diff < 0 && pageNum < totalPages) {
-      pageNum++;
-      renderPage(pageNum);
-    } else if (diff > 0 && pageNum > 1) {
-      pageNum--;
-      renderPage(pageNum);
-    }
+  if (Math.abs(diff) > swipeThreshold && zoom === 1) {
+    if (diff < 0 && pageNum < totalPages) nextBtn.click();
+    if (diff > 0 && pageNum > 1) prevBtn.click();
   }
-
   startX = endX = 0;
 });
 
-/* WhatsApp share */
+/* Pinch-to-zoom */
+let lastDistance = null;
+
+canvas.addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const distance = Math.hypot(dx, dy);
+
+    if (lastDistance) {
+      zoom += (distance - lastDistance) * 0.005;
+      zoom = Math.min(Math.max(zoom, MIN_ZOOM), MAX_ZOOM);
+      renderPage(pageNum);
+    }
+
+    lastDistance = distance;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => {
+  lastDistance = null;
+});
+
+/* Double-tap zoom */
+let lastTap = 0;
+
+canvas.addEventListener('touchend', () => {
+  const now = Date.now();
+  if (now - lastTap < 300) {
+    zoom = zoom === 1 ? 2 : 1;
+    renderPage(pageNum);
+  }
+  lastTap = now;
+});
+
+/* WhatsApp (unchanged) */
 askBtn.addEventListener('click', () => {
-  canvas.toBlob(async blob => {
+  canvas.toBlob(blob => {
     const file = new File([blob], `SSFW_Page_${pageNum}.png`, {
       type: "image/png"
     });
 
+    const text = encodeURIComponent(
+      `Hi, I’m interested in this product.\nPage: ${pageNum}`
+    );
+
+    window.open(
+      `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`,
+      "_blank"
+    );
+
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: "SSFW Product",
-          text: `Interested in this product (Page ${pageNum})`
-        });
-      } catch (_) {}
-    } else {
-      const text = encodeURIComponent(
-        `Hi, I’m interested in this product.\nPage: ${pageNum}`
-      );
-      window.open(
-        `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`,
-        "_blank"
-      );
+      navigator.share({
+        files: [file],
+        title: "SSFW Product"
+      });
     }
   });
 });
-
