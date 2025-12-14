@@ -4,7 +4,7 @@ const url = 'product.pdf';
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-/* DOM */
+/* DOM elements */
 const canvas = document.getElementById('pdf-canvas');
 const ctx = canvas.getContext('2d');
 const prevBtn = document.getElementById('prev');
@@ -22,26 +22,21 @@ let pdfDoc = null;
 let totalPages = 0;
 let pageNum = parseInt(localStorage.getItem('lastPage'), 10) || 1;
 
-/* Render page */
+/* Render page (fixed scale) */
 function renderPage(num) {
   pdfDoc.getPage(num).then(page => {
-    const baseViewport = page.getViewport({ scale: 1 });
-
-    const scale = Math.min(
-      window.innerWidth / baseViewport.width,
-      window.innerHeight / baseViewport.height
-    );
-
+    const scale = 1.2; // fixed zoom level
     const viewport = page.getViewport({ scale });
 
     canvas.width = viewport.width;
     canvas.height = viewport.height;
 
-    page.render({
+    const renderCtx = {
       canvasContext: ctx,
       viewport
-    });
+    };
 
+    page.render(renderCtx);
     indicator.textContent = `${num} / ${totalPages}`;
     localStorage.setItem('lastPage', num);
   });
@@ -82,11 +77,6 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') nextBtn.click();
 });
 
-/* Resize handling */
-window.addEventListener('resize', () => {
-  if (pdfDoc) renderPage(pageNum);
-});
-
 /* Swipe support */
 let startX = 0;
 let endX = 0;
@@ -119,26 +109,35 @@ canvas.addEventListener('touchend', () => {
 /* WhatsApp share */
 askBtn.addEventListener('click', () => {
   canvas.toBlob(async blob => {
-    const file = new File([blob], `SSFW_Page_${pageNum}.png`, {
-      type: "image/png"
-    });
+    const file = new File([blob], `Page_${pageNum}.png`, { type: "image/png" });
 
+    // Native share (mobile)
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({
           files: [file],
           title: "SSFW Product",
-          text: `Interested in this product (Page ${pageNum})`
+          text: `Hi, I'm interested in this product (Page ${pageNum}).`
         });
-      } catch (_) {}
-    } else {
-      const text = encodeURIComponent(
-        `Hi, I’m interested in this product.\nPage: ${pageNum}`
-      );
-      window.open(
-        `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`,
-        "_blank"
-      );
+        return;
+      } catch (err) {
+        console.error("Share cancelled or failed:", err);
+      }
     }
+
+    // Fallback for WhatsApp Web
+    const imgURL = URL.createObjectURL(blob);
+    const text = encodeURIComponent(
+      `Hi, I'm interested in this product (Page ${pageNum}). Screenshot attached.`
+    );
+
+    // Download screenshot first
+    const a = document.createElement('a');
+    a.href = imgURL;
+    a.download = `Page_${pageNum}.png`;
+    a.click();
+
+    // Then open WhatsApp chat
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, "_blank");
   });
 });
