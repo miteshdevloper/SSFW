@@ -4,7 +4,7 @@ const url = 'product.pdf';
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-/* DOM */
+/* DOM elements */
 const canvas = document.getElementById('pdf-canvas');
 const ctx = canvas.getContext('2d');
 const prevBtn = document.getElementById('prev');
@@ -14,7 +14,7 @@ const splash = document.getElementById('splash');
 const viewer = document.querySelector('.viewer');
 const askBtn = document.getElementById('askBtn');
 
-/* WhatsApp number */
+/* WhatsApp number (country code, no +) */
 const WHATSAPP_NUMBER = "919425311374";
 
 /* State */
@@ -23,22 +23,21 @@ let totalPages = 0;
 let pageNum = parseInt(localStorage.getItem('lastPage'), 10) || 1;
 let isRendering = false;
 
-/* Add smooth fade transition */
+/* Smooth fade transition */
 canvas.style.transition = "opacity 0.4s ease";
 
-/* Render page with smooth transition */
+/* Render page with fade effect */
 async function renderPage(num) {
   if (isRendering) return;
   isRendering = true;
 
-  // Fade out current page
   canvas.style.opacity = "0";
 
   const page = await pdfDoc.getPage(num);
-  const scale = 1.2;
+  const scale = 1.2; // fixed zoom level
   const viewport = page.getViewport({ scale });
 
-  // Render offscreen first to avoid flicker
+  // Render offscreen to avoid flicker
   const offscreenCanvas = document.createElement("canvas");
   const offscreenCtx = offscreenCanvas.getContext("2d");
   offscreenCanvas.width = viewport.width;
@@ -49,7 +48,7 @@ async function renderPage(num) {
     viewport
   }).promise;
 
-  // Once rendered, draw onto main canvas
+  // Draw offscreen result onto visible canvas
   canvas.width = offscreenCanvas.width;
   canvas.height = offscreenCanvas.height;
   ctx.drawImage(offscreenCanvas, 0, 0);
@@ -57,7 +56,7 @@ async function renderPage(num) {
   indicator.textContent = `${num} / ${totalPages}`;
   localStorage.setItem('lastPage', num);
 
-  // Fade in new page
+  // Fade back in
   setTimeout(() => {
     canvas.style.opacity = "1";
     isRendering = false;
@@ -71,14 +70,28 @@ pdfjsLib.getDocument(url).promise.then(pdf => {
 
   if (pageNum > totalPages) pageNum = 1;
 
-  setTimeout(() => {
+  const alreadyShown = sessionStorage.getItem('splashShown');
+
+  if (!alreadyShown) {
+    // Show splash only on first open
+    splash.style.display = 'flex';
+    viewer.classList.add('hidden');
+
+    setTimeout(() => {
+      splash.style.display = 'none';
+      viewer.classList.remove('hidden');
+      renderPage(pageNum);
+      sessionStorage.setItem('splashShown', 'true');
+    }, 1800);
+  } else {
+    // Skip splash after first time
     splash.style.display = 'none';
     viewer.classList.remove('hidden');
     renderPage(pageNum);
-  }, 1800);
+  }
 });
 
-/* Navigation */
+/* Navigation buttons */
 prevBtn.onclick = () => {
   if (pageNum > 1) {
     pageNum--;
@@ -99,7 +112,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') nextBtn.click();
 });
 
-/* Swipe support */
+/* Swipe support (mobile) */
 let startX = 0;
 let endX = 0;
 const swipeThreshold = 50;
@@ -126,11 +139,12 @@ canvas.addEventListener('touchend', () => {
   startX = endX = 0;
 });
 
-/* WhatsApp share */
+/* WhatsApp Share */
 askBtn.addEventListener('click', () => {
   canvas.toBlob(async blob => {
     const file = new File([blob], `Page_${pageNum}.png`, { type: "image/png" });
 
+    // Try native share first (mobile)
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({
@@ -144,16 +158,19 @@ askBtn.addEventListener('click', () => {
       }
     }
 
+    // Fallback for desktop / WhatsApp Web
     const imgURL = URL.createObjectURL(blob);
     const text = encodeURIComponent(
       `Hi, I'm interested in this product (Page ${pageNum}). Screenshot attached.`
     );
 
+    // Auto-download screenshot for user to attach manually
     const a = document.createElement('a');
     a.href = imgURL;
     a.download = `Page_${pageNum}.png`;
     a.click();
 
+    // Open WhatsApp chat
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, "_blank");
   });
 });
