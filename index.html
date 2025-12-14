@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SSFW Viewer</title>
+
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+</head>
+<body>
+
+<!-- Opening Screen -->
+<div id="splash">
+  <div class="logo">SSFW</div>
+</div>
+
+<!-- Viewer -->
+<div class="viewer hidden">
+  <button id="prev" class="arrow left">❮</button>
+
+  <canvas id="pdf-canvas"></canvas>
+
+  <button id="next" class="arrow right">❯</button>
+
+  <div id="page-indicator"></div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
+    

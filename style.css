@@ -1,0 +1,111 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #000;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+}
+
+/* 🔥 Splash Screen */
+#splash {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.logo {
+  font-size: 72px;
+  font-weight: 800;
+  letter-spacing: 12px;
+  color: white;
+  animation: reveal 1.6s ease forwards;
+}
+
+@keyframes reveal {
+  0% {
+    opacity: 0;
+    transform: scale(1.4);
+    letter-spacing: 30px;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    letter-spacing: 12px;
+  }
+}
+
+/* Viewer */
+.viewer {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hidden {
+  display: none;
+}
+
+canvas {
+  max-width: 100vw;
+  max-height: 100vh;
+}
+
+/* ⬅ ➡ Arrows */
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  color: white;
+  border: none;
+  font-size: 64px;
+  padding: 20px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s, transform 0.2s;
+  user-select: none;
+}
+
+.arrow:hover {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.arrow.left {
+  left: 10px;
+}
+
+.arrow.right {
+  right: 10px;
+}
+
+/* Page indicator */
+#page-indicator {
+  position: absolute;
+  bottom: 16px;
+  right: 20px;
+  color: white;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+/* 📱 Mobile: bigger arrows */
+@media (max-width: 600px) {
+  .arrow {
+    font-size: 56px;
+  }
+}
+canvas {
+  touch-action: pan-y;
+}
