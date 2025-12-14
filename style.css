@@ -1,15 +1,21 @@
+/* Reset */
 * {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
+/* Base */
 body {
-  margin: 0;
   background: #000;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   overflow: hidden;
-  font-family: system-ui, sans-serif;
+  user-select: none;
 }
 
-/* 🔥 Splash Screen */
+/* =========================
+   Splash Screen (SSFW)
+   ========================= */
 #splash {
   position: fixed;
   inset: 0;
@@ -17,53 +23,35 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10;
+  z-index: 100;
 }
-
-#askBtn {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  background: #25D366;
-  color: #000;
-  border: none;
-  padding: 12px 18px;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 24px;
-  cursor: pointer;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-}
-
-#askBtn:active {
-  transform: scale(0.96);
-}
-
 
 .logo {
-  font-size: 72px;
+  color: #fff;
+  font-size: clamp(48px, 10vw, 96px);
   font-weight: 800;
-  letter-spacing: 12px;
-  color: white;
-  animation: reveal 1.6s ease forwards;
+  letter-spacing: 14px;
+  animation: ssfwIntro 1.6s ease forwards;
 }
 
-@keyframes reveal {
+@keyframes ssfwIntro {
   0% {
     opacity: 0;
-    transform: scale(1.4);
-    letter-spacing: 30px;
+    transform: scale(1.6);
+    letter-spacing: 40px;
   }
   60% {
     opacity: 1;
   }
   100% {
     transform: scale(1);
-    letter-spacing: 12px;
+    letter-spacing: 14px;
   }
 }
 
-/* Viewer */
+/* =========================
+   Viewer Layout
+   ========================= */
 .viewer {
   position: fixed;
   inset: 0;
@@ -76,25 +64,28 @@ body {
   display: none;
 }
 
+/* Canvas (PDF page as image) */
 canvas {
   max-width: 100vw;
   max-height: 100vh;
+  touch-action: pan-y;
 }
 
-/* ⬅ ➡ Arrows */
+/* =========================
+   Navigation Arrows
+   ========================= */
 .arrow {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
   background: transparent;
-  color: white;
   border: none;
-  font-size: 64px;
+  color: white;
+  font-size: clamp(48px, 8vw, 72px);
   padding: 20px;
   cursor: pointer;
   opacity: 0.6;
-  transition: opacity 0.2s, transform 0.2s;
-  user-select: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .arrow:hover {
@@ -103,30 +94,58 @@ canvas {
 }
 
 .arrow.left {
-  left: 10px;
+  left: 12px;
 }
 
 .arrow.right {
-  right: 10px;
+  right: 12px;
 }
 
-/* Page indicator */
+/* =========================
+   Page Indicator
+   ========================= */
 #page-indicator {
   position: absolute;
   bottom: 16px;
   right: 20px;
   color: white;
-  font-size: 14px;
+  font-size: 13px;
   opacity: 0.7;
 }
 
-/* 📱 Mobile: bigger arrows */
-@media (max-width: 600px) {
-  .arrow {
-    font-size: 56px;
-  }
-}
-canvas {
-  touch-action: pan-y;
+/* =========================
+   Ask for this (WhatsApp)
+   ========================= */
+#askBtn {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  background: #25D366;
+  color: #000;
+  border: none;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 24px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  transition: transform 0.15s ease;
 }
 
+#askBtn:active {
+  transform: scale(0.95);
+}
+
+/* =========================
+   Mobile Refinements
+   ========================= */
+@media (max-width: 600px) {
+  .arrow {
+    padding: 16px;
+  }
+
+  #askBtn {
+    font-size: 13px;
+    padding: 10px 16px;
+  }
+}
