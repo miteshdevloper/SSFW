@@ -2,36 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Mobile fullscreen -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
   <title>SSFW Viewer</title>
 
+  <!-- Styles -->
   <link rel="stylesheet" href="style.css">
+
+  <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body>
 
-<!-- Opening Screen -->
-<div id="splash">
-  <div class="logo">SSFW</div>
-</div>
+  <!-- Splash Screen -->
+  <div id="splash">
+    <div class="logo">SSFW</div>
+  </div>
 
-<!-- Viewer -->
-<div class="viewer hidden">
+  <!-- Main Viewer -->
+  <div class="viewer hidden">
 
-  <button id="askBtn">Ask for this</button>
+    <!-- Navigation -->
+    <button id="prev" class="arrow left" aria-label="Previous page">❮</button>
+    <button id="next" class="arrow right" aria-label="Next page">❯</button>
 
-  
-  <button id="prev" class="arrow left">❮</button>
+    <!-- PDF Canvas -->
+    <canvas id="pdf-canvas"></canvas>
 
-  <canvas id="pdf-canvas"></canvas>
+    <!-- UI Overlays -->
+    <div id="page-indicator"></div>
+    <button id="askBtn">Ask for this</button>
 
-  <button id="next" class="arrow right">❯</button>
+  </div>
 
-  <div id="page-indicator"></div>
-</div>
+  <!-- App Logic -->
+  <script src="script.js"></script>
 
-<script src="script.js"></script>
 </body>
 </html>
-
-    
