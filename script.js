@@ -4,7 +4,7 @@ const url = 'product.pdf';
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-/* DOM elements */
+/* DOM */
 const canvas = document.getElementById('pdf-canvas');
 const ctx = canvas.getContext('2d');
 const prevBtn = document.getElementById('prev');
@@ -14,32 +14,54 @@ const splash = document.getElementById('splash');
 const viewer = document.querySelector('.viewer');
 const askBtn = document.getElementById('askBtn');
 
-/* WhatsApp number (country code, no +) */
+/* WhatsApp number */
 const WHATSAPP_NUMBER = "919425311374";
 
 /* State */
 let pdfDoc = null;
 let totalPages = 0;
 let pageNum = parseInt(localStorage.getItem('lastPage'), 10) || 1;
+let isRendering = false;
 
-/* Render page (fixed scale) */
-function renderPage(num) {
-  pdfDoc.getPage(num).then(page => {
-    const scale = 1.2; // fixed zoom level
-    const viewport = page.getViewport({ scale });
+/* Add smooth fade transition */
+canvas.style.transition = "opacity 0.4s ease";
 
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+/* Render page with smooth transition */
+async function renderPage(num) {
+  if (isRendering) return;
+  isRendering = true;
 
-    const renderCtx = {
-      canvasContext: ctx,
-      viewport
-    };
+  // Fade out current page
+  canvas.style.opacity = "0";
 
-    page.render(renderCtx);
-    indicator.textContent = `${num} / ${totalPages}`;
-    localStorage.setItem('lastPage', num);
-  });
+  const page = await pdfDoc.getPage(num);
+  const scale = 1.2;
+  const viewport = page.getViewport({ scale });
+
+  // Render offscreen first to avoid flicker
+  const offscreenCanvas = document.createElement("canvas");
+  const offscreenCtx = offscreenCanvas.getContext("2d");
+  offscreenCanvas.width = viewport.width;
+  offscreenCanvas.height = viewport.height;
+
+  await page.render({
+    canvasContext: offscreenCtx,
+    viewport
+  }).promise;
+
+  // Once rendered, draw onto main canvas
+  canvas.width = offscreenCanvas.width;
+  canvas.height = offscreenCanvas.height;
+  ctx.drawImage(offscreenCanvas, 0, 0);
+
+  indicator.textContent = `${num} / ${totalPages}`;
+  localStorage.setItem('lastPage', num);
+
+  // Fade in new page
+  setTimeout(() => {
+    canvas.style.opacity = "1";
+    isRendering = false;
+  }, 100);
 }
 
 /* Load PDF */
@@ -56,7 +78,7 @@ pdfjsLib.getDocument(url).promise.then(pdf => {
   }, 1800);
 });
 
-/* Navigation buttons */
+/* Navigation */
 prevBtn.onclick = () => {
   if (pageNum > 1) {
     pageNum--;
@@ -92,7 +114,6 @@ canvas.addEventListener('touchmove', e => {
 
 canvas.addEventListener('touchend', () => {
   const diff = endX - startX;
-
   if (Math.abs(diff) > swipeThreshold) {
     if (diff < 0 && pageNum < totalPages) {
       pageNum++;
@@ -102,7 +123,6 @@ canvas.addEventListener('touchend', () => {
       renderPage(pageNum);
     }
   }
-
   startX = endX = 0;
 });
 
@@ -111,7 +131,6 @@ askBtn.addEventListener('click', () => {
   canvas.toBlob(async blob => {
     const file = new File([blob], `Page_${pageNum}.png`, { type: "image/png" });
 
-    // Native share (mobile)
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({
@@ -125,19 +144,16 @@ askBtn.addEventListener('click', () => {
       }
     }
 
-    // Fallback for WhatsApp Web
     const imgURL = URL.createObjectURL(blob);
     const text = encodeURIComponent(
       `Hi, I'm interested in this product (Page ${pageNum}). Screenshot attached.`
     );
 
-    // Download screenshot first
     const a = document.createElement('a');
     a.href = imgURL;
     a.download = `Page_${pageNum}.png`;
     a.click();
 
-    // Then open WhatsApp chat
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, "_blank");
   });
 });
