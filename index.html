@@ -2,45 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-
-  <!-- Mobile fullscreen -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-
-  <title>SSFW Viewer</title>
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="style.css">
-
-  <!-- PDF.js -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SSFW PDF Viewer</title>
+  <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body>
-
-  <!-- Splash Screen -->
-  <div id="splash">
-    <div class="logo">SSFW</div>
+  <!-- Splash screen -->
+  <div id="splash" class="splash">
+    <h1>Loading Product...</h1>
   </div>
 
-  <!-- Main Viewer -->
+  <!-- PDF Viewer -->
   <div class="viewer hidden">
-
-    <!-- Navigation -->
-    <button id="prev" class="arrow left" aria-label="Previous page">❮</button>
-    <button id="next" class="arrow right" aria-label="Next page">❯</button>
-
-    <!-- PDF Canvas -->
     <canvas id="pdf-canvas"></canvas>
 
-    <!-- UI Overlays -->
-    <div id="page-indicator"></div>
-    <button id="askBtn">व्हाट्सऐप पर पूछने के लिए क्लिक करें 👆</button>
+    <div class="controls">
+      <button id="prev">Prev</button>
+      <span id="page-indicator"></span>
+      <button id="next">Next</button>
+    </div>
 
+    <div class="page-controls">
+      <input type="number" id="gotoPageInput" placeholder="Page #" min="1" />
+      <button id="gotoPageBtn">Go</button>
+    </div>
+
+    <button id="askBtn" class="whatsapp-btn">Ask on WhatsApp</button>
   </div>
 
-  <!-- App Logic -->
   <script src="script.js"></script>
-
 </body>
 </html>
-
-
