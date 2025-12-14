@@ -10,181 +10,121 @@ const ctx = canvas.getContext('2d');
 const prevBtn = document.getElementById('prev');
 const nextBtn = document.getElementById('next');
 const indicator = document.getElementById('page-indicator');
-const splash = document.getElementById('splash');
-const viewer = document.querySelector('.viewer');
 const askBtn = document.getElementById('askBtn');
 const gotoInput = document.getElementById('gotoPageInput');
 const gotoBtn = document.getElementById('gotoPageBtn');
 
-/* WhatsApp */
 const WHATSAPP_NUMBER = "919425311374";
 
-/* State */
 let pdfDoc = null;
 let totalPages = 0;
 let pageNum = 1;
 let isRendering = false;
-
-/* Auto-reset timer (2 min) */
-const INACTIVITY_LIMIT = 2 * 60 * 1000;
 let inactivityTimer;
+const INACTIVITY_LIMIT = 2 * 60 * 1000; // 2 min
 
-/* Smooth fade */
-canvas.style.transition = "opacity 0.4s ease";
-
-/* Reset to first page */
-function resetToFirstPage() {
-  pageNum = 1;
-  renderPage(1);
-}
-
-/* Restart inactivity timer */
-function resetInactivityTimer() {
-  clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(resetToFirstPage, INACTIVITY_LIMIT);
-}
-
-/* Render page */
+/* Render page full-screen */
 async function renderPage(num) {
   if (isRendering) return;
   isRendering = true;
   canvas.style.opacity = "0";
 
   const page = await pdfDoc.getPage(num);
+  const baseViewport = page.getViewport({ scale: 1 });
   const scale = Math.min(
-    window.innerWidth / page.getViewport({ scale: 1 }).width,
-    window.innerHeight / page.getViewport({ scale: 1 }).height
+    window.innerWidth / baseViewport.width,
+    window.innerHeight / baseViewport.height
   );
-
   const viewport = page.getViewport({ scale });
 
-  const offscreen = document.createElement("canvas");
-  const offCtx = offscreen.getContext("2d");
-  offscreen.width = viewport.width;
-  offscreen.height = viewport.height;
-
+  const off = document.createElement("canvas");
+  const offCtx = off.getContext("2d");
+  off.width = viewport.width;
+  off.height = viewport.height;
   await page.render({ canvasContext: offCtx, viewport }).promise;
 
-  canvas.width = offscreen.width;
-  canvas.height = offscreen.height;
-  ctx.drawImage(offscreen, 0, 0);
+  canvas.width = off.width;
+  canvas.height = off.height;
+  ctx.drawImage(off, 0, 0);
 
   indicator.textContent = `${num} / ${totalPages}`;
+  setTimeout(() => (canvas.style.opacity = "1"), 100);
 
-  setTimeout(() => {
-    canvas.style.opacity = "1";
-    isRendering = false;
-  }, 100);
-
+  isRendering = false;
   resetInactivityTimer();
 }
 
-/* Load PDF */
+/* Reset inactivity */
+function resetInactivityTimer() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(() => {
+    pageNum = 1;
+    renderPage(1);
+  }, INACTIVITY_LIMIT);
+}
+
+/* Load PDF and start at page 1 */
 pdfjsLib.getDocument(url).promise.then(pdf => {
   pdfDoc = pdf;
   totalPages = pdf.numPages;
   gotoInput.max = totalPages;
-
-  // Always start from page 1
-  pageNum = 1;
-
-  // Show splash only once
-  const alreadyShown = sessionStorage.getItem('splashShown');
-  if (!alreadyShown) {
-    splash.style.display = 'flex';
-    viewer.classList.add('hidden');
-    setTimeout(() => {
-      splash.style.display = 'none';
-      viewer.classList.remove('hidden');
-      renderPage(1);
-      sessionStorage.setItem('splashShown', 'true');
-      openFullscreen();
-    }, 2000);
-  } else {
-    splash.style.display = 'none';
-    viewer.classList.remove('hidden');
-    renderPage(1);
-    openFullscreen();
-  }
+  renderPage(1);
+  openFullscreen();
 });
 
-/* Fullscreen helper */
+/* Fullscreen */
 function openFullscreen() {
   const elem = document.documentElement;
   if (elem.requestFullscreen) elem.requestFullscreen();
   else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-  else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
 }
 
-/* Controls */
-prevBtn.onclick = () => { if (pageNum > 1) renderPage(--pageNum); };
-nextBtn.onclick = () => { if (pageNum < totalPages) renderPage(++pageNum); };
-
+/* Navigation */
+prevBtn.onclick = () => {
+  if (pageNum > 1) {
+    pageNum--;
+    renderPage(pageNum);
+  }
+};
+nextBtn.onclick = () => {
+  if (pageNum < totalPages) {
+    pageNum++;
+    renderPage(pageNum);
+  }
+};
 gotoBtn.onclick = () => {
   const target = parseInt(gotoInput.value, 10);
   if (!isNaN(target) && target >= 1 && target <= totalPages) {
     pageNum = target;
     renderPage(pageNum);
-  } else {
-    alert(`Enter a number between 1 and ${totalPages}`);
   }
 };
 
-/* Keyboard nav */
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft') prevBtn.click();
-  if (e.key === 'ArrowRight') nextBtn.click();
-  resetInactivityTimer();
-});
-
-/* Swipe (mobile) */
-let startX = 0, endX = 0;
-canvas.addEventListener('touchstart', e => {
-  startX = e.touches[0].clientX;
-  resetInactivityTimer();
-});
-canvas.addEventListener('touchmove', e => (endX = e.touches[0].clientX));
-canvas.addEventListener('touchend', () => {
-  const diff = endX - startX;
-  if (Math.abs(diff) > 50) {
-    if (diff < 0 && pageNum < totalPages) renderPage(++pageNum);
-    else if (diff > 0 && pageNum > 1) renderPage(--pageNum);
-  }
-  startX = endX = 0;
-});
-
-/* Reset timer on user actions */
+/* Reset timer on activity */
 ["click", "mousemove", "keydown", "touchstart"].forEach(evt =>
   document.addEventListener(evt, resetInactivityTimer)
 );
 
-/* WhatsApp share */
+/* WhatsApp share (Hindi label) */
 askBtn.addEventListener('click', () => {
   resetInactivityTimer();
   canvas.toBlob(async blob => {
-    const file = new File([blob], `Page_${pageNum}.png`, { type: "image/png" });
+    const file = new File([blob], `पेज_${pageNum}.png`, { type: "image/png" });
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({
           files: [file],
           title: "SSFW Product",
-          text: `Hi, I'm interested in this product (Page ${pageNum}).`
+          text: `मैं इस उत्पाद में रुचि रखता हूँ (पेज ${pageNum}).`
         });
         return;
-      } catch (err) {
-        console.error("Share cancelled or failed:", err);
-      }
+      } catch (_) {}
     }
 
-    const imgURL = URL.createObjectURL(blob);
     const text = encodeURIComponent(
-      `Hi, I'm interested in this product (Page ${pageNum}). Screenshot attached.`
+      `नमस्ते, मैं इस उत्पाद में रुचि रखता हूँ। (पेज ${pageNum})`
     );
-    const a = document.createElement("a");
-    a.href = imgURL;
-    a.download = `Page_${pageNum}.png`;
-    a.click();
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, "_blank");
   });
 });
