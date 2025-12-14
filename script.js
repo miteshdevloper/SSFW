@@ -23,6 +23,9 @@ let totalPages = 0;
 let pageNum = parseInt(localStorage.getItem('lastPage'), 10) || 1;
 let isRendering = false;
 
+/* Reopen-reset timeout (7 minutes) */
+const REOPEN_RESET_TIME = 7 * 60 * 1000; // 7 minutes in ms
+
 /* Smooth fade transition */
 canvas.style.transition = "opacity 0.4s ease";
 
@@ -30,14 +33,12 @@ canvas.style.transition = "opacity 0.4s ease";
 async function renderPage(num) {
   if (isRendering) return;
   isRendering = true;
-
   canvas.style.opacity = "0";
 
   const page = await pdfDoc.getPage(num);
-  const scale = 1.2; // fixed zoom level
+  const scale = 1.2;
   const viewport = page.getViewport({ scale });
 
-  // Render offscreen to avoid flicker
   const offscreenCanvas = document.createElement("canvas");
   const offscreenCtx = offscreenCanvas.getContext("2d");
   offscreenCanvas.width = viewport.width;
@@ -48,7 +49,6 @@ async function renderPage(num) {
     viewport
   }).promise;
 
-  // Draw offscreen result onto visible canvas
   canvas.width = offscreenCanvas.width;
   canvas.height = offscreenCanvas.height;
   ctx.drawImage(offscreenCanvas, 0, 0);
@@ -56,7 +56,6 @@ async function renderPage(num) {
   indicator.textContent = `${num} / ${totalPages}`;
   localStorage.setItem('lastPage', num);
 
-  // Fade back in
   setTimeout(() => {
     canvas.style.opacity = "1";
     isRendering = false;
@@ -68,12 +67,17 @@ pdfjsLib.getDocument(url).promise.then(pdf => {
   pdfDoc = pdf;
   totalPages = pdf.numPages;
 
-  if (pageNum > totalPages) pageNum = 1;
+  // Check if reopened after > 7 minutes
+  const lastActive = parseInt(localStorage.getItem('lastActive'), 10);
+  const now = Date.now();
+  if (lastActive && now - lastActive > REOPEN_RESET_TIME) {
+    pageNum = 1;
+    localStorage.setItem('lastPage', 1);
+  }
 
   const alreadyShown = sessionStorage.getItem('splashShown');
 
   if (!alreadyShown) {
-    // Show splash only on first open
     splash.style.display = 'flex';
     viewer.classList.add('hidden');
 
@@ -84,11 +88,15 @@ pdfjsLib.getDocument(url).promise.then(pdf => {
       sessionStorage.setItem('splashShown', 'true');
     }, 1800);
   } else {
-    // Skip splash after first time
     splash.style.display = 'none';
     viewer.classList.remove('hidden');
     renderPage(pageNum);
   }
+});
+
+/* Save last active timestamp whenever tab closes or reloads */
+window.addEventListener('beforeunload', () => {
+  localStorage.setItem('lastActive', Date.now().toString());
 });
 
 /* Navigation buttons */
@@ -164,13 +172,11 @@ askBtn.addEventListener('click', () => {
       `Hi, I'm interested in this product (Page ${pageNum}). Screenshot attached.`
     );
 
-    // Auto-download screenshot for user to attach manually
     const a = document.createElement('a');
     a.href = imgURL;
     a.download = `Page_${pageNum}.png`;
     a.click();
 
-    // Open WhatsApp chat
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, "_blank");
   });
 });
